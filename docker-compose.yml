@@ -1,0 +1,36 @@
+version: '3'
+services:
+  database:
+    container_name: mysql-db
+    image: mysql:8.3
+    environment:
+      MYSQL_DATABASE: bucket_store
+      MYSQL_ROOT_HOST: '%'
+      MYSQL_ROOT_PASSWORD: 1234
+      TZ : 'Asia/Seoul'
+    ports:
+      - "3306:3306"
+    command: ["mysqld", "--default-authentication-plugin=caching_sha2_password"]
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u root", "-p$MYSQL_ROOT_PASSWORD" ]
+      interval: 10s
+      retries: 5
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  application:
+    container_name: spring-boot-container
+    restart: on-failure
+    build:
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/bucket_store?useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
+    links:
+      - database
+    depends_on:
+      database:
+          condition: service_healthy
